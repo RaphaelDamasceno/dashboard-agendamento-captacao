@@ -5,7 +5,12 @@ from supabase import create_client
 import time
 import base64
 from datetime import datetime
-from textwrap import dedent  # <--- A SOLUÇÃO MÁGICA
+import textwrap # Importante para corrigir o bug do HTML
+
+# --- FUNÇÃO PARA CORRIGIR O BUG DO DIV (HTML BRANCO) ---
+def clean_html(html_str):
+    """Remove indentação e espaços extras que quebram o visual no Streamlit"""
+    return textwrap.dedent(html_str).strip()
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
@@ -15,6 +20,7 @@ st.set_page_config(
 )
 
 # --- CONEXÃO SUPABASE ---
+# Mantendo suas credenciais originais
 SUPABASE_URL = "https://ypyjwaypvhoebyralnlg.supabase.co"
 SUPABASE_KEY = "sb_secret_teGZUf0kJWuSZw3J7kVtSA_2UQnHArZ"
 
@@ -35,7 +41,7 @@ def get_base64_of_bin_file(bin_file):
     except FileNotFoundError:
         return None
 
-# --- ASSETS & ÍCONES ---
+# --- ASSETS & ÍCONES (SVG) ---
 ICONS = {
     "crown": """<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 4 3 12h14l3-12-6 7-4-3-4 3-6-7z"/><circle cx="12" cy="19" r="2"/></svg>""",
     "user": """<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>""",
@@ -50,7 +56,7 @@ logo_base64 = get_base64_of_bin_file(logo_file)
 data_hoje = datetime.now().strftime("%d/%m/%Y")
 hora_hoje = datetime.now().strftime("%H:%M")
 
-# --- DESIGN SYSTEM PPM (LIGHT / PREMIUM / BRANDED) ---
+# --- DESIGN SYSTEM PPM (LIGHT / PREMIUM) ---
 LOVABLE_CSS = """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
@@ -64,10 +70,10 @@ LOVABLE_CSS = """
         --text-muted: #6b7280;    /* Texto Secundário (Cinza médio) */
         --primary: #e5530f;       /* Laranja PPM Oficial */
         --primary-glow: rgba(229, 83, 15, 0.25); /* Glow suave */
-        --success-bg: #ecfdf5;
-        --success-text: #059669;
-        --info-bg: #eff6ff;
-        --info-text: #2563eb;
+        
+        /* Cores de Status */
+        --success-bg: #ecfdf5; --success-text: #059669; --success-border: #d1fae5;
+        --info-bg: #eff6ff;    --info-text: #2563eb;    --info-border: #dbeafe;
     }
 
     /* Reset e Base */
@@ -77,6 +83,8 @@ LOVABLE_CSS = """
         background-color: var(--bg-app) !important;
     }
     .stApp { background-color: var(--bg-app) !important; }
+    
+    /* Esconder elementos padrão do Streamlit */
     header, footer, #MainMenu { visibility: hidden; }
     .block-container {
         padding: 1rem 1.5rem !important;
@@ -87,7 +95,7 @@ LOVABLE_CSS = """
     .lovable-topbar {
         display: flex; justify-content: space-between; align-items: center;
         padding: 0.75rem 1.5rem;
-        background: rgba(255, 255, 255, 0.85); /* Vidro claro */
+        background: rgba(255, 255, 255, 0.85);
         border-bottom: 1px solid var(--border);
         margin-bottom: 1.5rem;
         border-radius: 12px;
@@ -98,10 +106,10 @@ LOVABLE_CSS = """
     /* Logo Filter: Inverte a logo branca para ficar escura no fundo claro */
     .logo-img {
         height: 32px;
-        filter: invert(1) brightness(0.2); /* Truque para logo branca em fundo branco */
+        filter: invert(1) brightness(0.2); 
     }
 
-    /* Card Base - Estilo Institucional */
+    /* Card Base */
     .lovable-card {
         background-color: var(--bg-card);
         border: 1px solid var(--border);
@@ -109,7 +117,7 @@ LOVABLE_CSS = """
         padding: 1.5rem;
         position: relative;
         overflow: hidden;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
         transition: all 0.3s ease;
     }
     .lovable-card:hover {
@@ -118,13 +126,13 @@ LOVABLE_CSS = """
         transform: translateY(-2px);
     }
 
-    /* Hero Card (Esquerda) - Gradiente Suave */
+    /* Hero Card (Esquerda) */
     .hero-card {
         height: 100%;
         display: flex; flex-direction: column; 
         align-items: center; justify-content: center;
         text-align: center;
-        background: linear-gradient(180deg, #ffffff 0%, #fff7f2 100%); /* Branco para Laranja muito suave */
+        background: linear-gradient(180deg, #ffffff 0%, #fff7f2 100%);
     }
     .hero-label {
         font-size: 0.85rem; 
@@ -146,16 +154,16 @@ LOVABLE_CSS = """
     .hero-avatar {
         width: 90px; height: 90px;
         border-radius: 50%;
-        background: var(--primary); /* Laranja Sólido */
+        background: var(--primary);
         color: white;
         font-size: 2.5rem; font-weight: 700;
         display: flex; align-items: center; justify-content: center;
         box-shadow: 0 8px 20px rgba(229, 83, 15, 0.3);
-        border: 4px solid #fff; /* Borda branca para separar */
+        border: 4px solid #fff;
         margin-bottom: 1rem;
     }
 
-    /* Ranking Podium - Light Mode */
+    /* Ranking Podium */
     .podium-container {
         display: flex; align-items: flex-end; justify-content: center; gap: 12px;
         height: 160px; margin-top: 1rem;
@@ -174,8 +182,9 @@ LOVABLE_CSS = """
         border-color: var(--primary);
         box-shadow: 0 -4px 20px -10px var(--primary-glow);
     }
-    .podium-2 { height: 70%; background: #f9fafb; }
-    .podium-3 { height: 50%; background: #f9fafb; }
+    .podium-2, .podium-3 { background: #f9fafb; }
+    .podium-2 { height: 70%; } 
+    .podium-3 { height: 50%; }
 
     /* Histórico Clean */
     .history-container {
@@ -201,17 +210,15 @@ LOVABLE_CSS = """
         background: #fdfdfd;
         border-color: var(--primary);
         transform: translateX(2px);
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
     .h-time { font-family: monospace; color: var(--text-muted); font-size: 0.8rem; }
     .h-name { font-weight: 600; color: var(--text-main); font-size: 0.9rem; margin-left: 10px; flex-grow: 1; }
     
-    /* Badges Light */
     .h-badge { 
         font-size: 0.7rem; padding: 2px 8px; border-radius: 6px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
     }
-    .h-badge-green { color: var(--success-text); background: var(--success-bg); border: 1px solid #d1fae5; }
-    .h-badge-blue { color: var(--info-text); background: var(--info-bg); border: 1px solid #dbeafe; }
+    .h-badge-green { color: var(--success-text); background: var(--success-bg); border: 1px solid var(--success-border); }
+    .h-badge-blue { color: var(--info-text); background: var(--info-bg); border: 1px solid var(--info-border); }
     
     .icon-sm svg { width: 16px; height: 16px; }
     
@@ -225,17 +232,15 @@ LOVABLE_CSS = """
     }
 </style>
 """
-# Aplicando CSS com DEDENT (pra não quebrar nada nunca mais)
-st.markdown(dedent(LOVABLE_CSS), unsafe_allow_html=True)
+st.markdown(clean_html(LOVABLE_CSS), unsafe_allow_html=True)
 
-# --- HEADER ---
+# --- HEADER (LOGOTIPO E STATUS) ---
 if logo_base64:
-    # Adicionei a classe 'logo-img' que inverte a cor se for necessário no fundo branco
     img_tag = f'<img src="data:image/png;base64,{logo_base64}" class="logo-img">'
 else:
     img_tag = f'<span style="color:#e5530f; font-weight:800; font-size:20px;">PPM</span>'
 
-st.markdown(dedent(f"""
+st.markdown(clean_html(f"""
     <div class="lovable-topbar">
         <div style="display:flex; align-items:center; gap:16px;">
             {img_tag}
@@ -248,7 +253,7 @@ st.markdown(dedent(f"""
     </div>
 """), unsafe_allow_html=True)
 
-# --- DADOS ---
+# --- BUSCA DE DADOS ---
 def get_data():
     try:
         response = supabase.table("vendas_dashboard").select("*").order("data_conclusao", desc=True).limit(50).execute()
@@ -259,28 +264,27 @@ def get_data():
 
 df = get_data()
 
-# --- LAYOUT 60/40 ---
+# --- LAYOUT PRINCIPAL (60% | 40%) ---
 if df.empty:
-    st.info("Aguardando dados...")
+    st.info("Aguardando dados de vendas...")
 else:
     col_left, col_right = st.columns([3, 2], gap="large")
 
-    # --- ESQUERDA: HERO CARD (CORRIGIDO: SEM INDENTAÇÃO + DEDENT) ---
+    # --- ESQUERDA: CARD PRINCIPAL (HERO) ---
     with col_left:
         latest = df.iloc[0]
         id_esteira = str(latest.get('id_esteira', '0'))
         is_captacao = id_esteira == '10'
         
         badge_text = "CAPTAÇÃO" if is_captacao else "AGENDAMENTO"
-        # Cores ajustadas para Light Mode (Texto mais escuro, fundo pastel)
-        badge_style = "color:#059669; background:#ecfdf5; border-color:#d1fae5;" if is_captacao else "color:#2563eb; background:#eff6ff; border-color:#dbeafe;"
+        badge_style = "color:var(--success-text); background:var(--success-bg); border-color:var(--success-border);" if is_captacao else "color:var(--info-text); background:var(--info-bg); border-color:var(--info-border);"
         
         nome_resp = latest.get('responsavel', 'Indefinido')
         iniciais = "".join([n[0] for n in nome_resp.split()[:2]]).upper()
         nome_cartao = latest.get('nome_cartao', '---')
         tempo = pd.to_datetime(latest['data_conclusao']).strftime("%H:%M")
 
-        st.markdown(dedent(f"""
+        st.markdown(clean_html(f"""
             <div class="lovable-card hero-card">
                 <div class="hero-label">
                     <span class="icon-sm">{ICONS['flame']}</span> ÚLTIMA CONVERSÃO
@@ -317,7 +321,8 @@ else:
         top3 = ranking_df.head(3).to_dict('records')
         while len(top3) < 3: top3.append({'nome': '-', 'count': 0})
 
-        st.markdown(dedent(f"""
+        # RANKING
+        st.markdown(clean_html(f"""
             <div class="lovable-card" style="margin-bottom: 1.5rem; padding-bottom: 0;">
                 <div style="text-align:center; font-size:0.8rem; color:var(--text-muted); font-weight:700; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:10px;">
                     🏆 Top Performers
@@ -343,12 +348,14 @@ else:
             </div>
         """), unsafe_allow_html=True)
 
-        st.markdown(dedent(f"""
+        # CABEÇALHO HISTÓRICO
+        st.markdown(clean_html(f"""
             <div style="margin-bottom:10px; display:flex; align-items:center; gap:8px; color:var(--text-muted); font-size:0.8rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em;">
                 <span class="icon-sm">{ICONS['activity']}</span> Histórico Recente
             </div>
         """), unsafe_allow_html=True)
         
+        # LISTA HISTÓRICO (BUILDER)
         html_history = '<div class="history-container">'
         last_records = df.head(6).to_dict('records')
         
@@ -362,7 +369,8 @@ else:
             else:
                 badge_html = '<span class="h-badge h-badge-blue">AGEND.</span>'
             
-            html_history += dedent(f"""
+            # Usando clean_html em cada item para garantir
+            html_history += clean_html(f"""
                 <div class="history-row">
                     <div class="h-time">{r_hora}</div>
                     <div class="h-name">{r_nome}</div>
