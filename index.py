@@ -5,12 +5,33 @@ from supabase import create_client
 import time
 import base64
 from datetime import datetime
-import textwrap # Importante para corrigir o bug do HTML
+import textwrap
+from html import escape # <--- Blindagem contra injeção de HTML no texto
+import re # Para remover tags do banco se existirem
 
-# --- FUNÇÃO PARA CORRIGIR O BUG DO DIV (HTML BRANCO) ---
+# --- FUNÇÕES DE LIMPEZA E BLINDAGEM ---
+
 def clean_html(html_str):
     """Remove indentação e espaços extras que quebram o visual no Streamlit"""
     return textwrap.dedent(html_str).strip()
+
+def sanitize_text(text):
+    """Remove tags HTML de uma string e faz escape de caracteres especiais"""
+    if not isinstance(text, str):
+        return str(text)
+    # 1. Remove tags HTML que possam vir do banco (ex: <div>Agendamento</div>)
+    clean = re.sub('<[^<]+?>', '', text)
+    # 2. Escapa caracteres para evitar quebra do HTML do layout
+    return escape(clean)
+
+def sanitize_df(df):
+    """Aplica sanitização em todo o dataframe para evitar quebra no front"""
+    if df.empty:
+        return df
+    # Aplica em colunas de string
+    for col in df.select_dtypes(include=['object']).columns:
+        df[col] = df[col].apply(lambda x: sanitize_text(x) if isinstance(x, str) else x)
+    return df
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
@@ -20,7 +41,6 @@ st.set_page_config(
 )
 
 # --- CONEXÃO SUPABASE ---
-# Mantendo suas credenciais originais
 SUPABASE_URL = "https://ypyjwaypvhoebyralnlg.supabase.co"
 SUPABASE_KEY = "sb_secret_teGZUf0kJWuSZw3J7kVtSA_2UQnHArZ"
 
@@ -41,7 +61,7 @@ def get_base64_of_bin_file(bin_file):
     except FileNotFoundError:
         return None
 
-# --- ASSETS & ÍCONES (SVG) ---
+# --- ASSETS & ÍCONES ---
 ICONS = {
     "crown": """<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 4 3 12h14l3-12-6 7-4-3-4 3-6-7z"/><circle cx="12" cy="19" r="2"/></svg>""",
     "user": """<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>""",
@@ -56,27 +76,24 @@ logo_base64 = get_base64_of_bin_file(logo_file)
 data_hoje = datetime.now().strftime("%d/%m/%Y")
 hora_hoje = datetime.now().strftime("%H:%M")
 
-# --- DESIGN SYSTEM PPM (LIGHT / PREMIUM) ---
+# --- DESIGN SYSTEM PPM ---
 LOVABLE_CSS = """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
     :root {
-        /* Paleta Light Premium - PPM */
-        --bg-app: #f9fafb;        /* Fundo claro (Cinza Gelo) */
-        --bg-card: #ffffff;       /* Card Branco Puro */
-        --border: #e5e7eb;        /* Bordas sutis */
-        --text-main: #111827;     /* Texto Escuro (Quase preto) */
-        --text-muted: #6b7280;    /* Texto Secundário (Cinza médio) */
-        --primary: #e5530f;       /* Laranja PPM Oficial */
-        --primary-glow: rgba(229, 83, 15, 0.25); /* Glow suave */
+        --bg-app: #f9fafb;
+        --bg-card: #ffffff;
+        --border: #e5e7eb;
+        --text-main: #111827;
+        --text-muted: #6b7280;
+        --primary: #e5530f;
+        --primary-glow: rgba(229, 83, 15, 0.25);
         
-        /* Cores de Status */
         --success-bg: #ecfdf5; --success-text: #059669; --success-border: #d1fae5;
         --info-bg: #eff6ff;    --info-text: #2563eb;    --info-border: #dbeafe;
     }
 
-    /* Reset e Base */
     html, body, [class*="css"] {
         font-family: 'Inter', sans-serif !important;
         color: var(--text-main) !important;
@@ -84,14 +101,12 @@ LOVABLE_CSS = """
     }
     .stApp { background-color: var(--bg-app) !important; }
     
-    /* Esconder elementos padrão do Streamlit */
     header, footer, #MainMenu { visibility: hidden; }
     .block-container {
         padding: 1rem 1.5rem !important;
         max-width: 100% !important;
     }
 
-    /* Topbar - Glass Light */
     .lovable-topbar {
         display: flex; justify-content: space-between; align-items: center;
         padding: 0.75rem 1.5rem;
@@ -103,13 +118,8 @@ LOVABLE_CSS = """
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
     }
     
-    /* Logo Filter: Inverte a logo branca para ficar escura no fundo claro */
-    .logo-img {
-        height: 32px;
-        filter: invert(1) brightness(0.2); 
-    }
+    .logo-img { height: 32px; filter: invert(1) brightness(0.2); }
 
-    /* Card Base */
     .lovable-card {
         background-color: var(--bg-card);
         border: 1px solid var(--border);
@@ -126,7 +136,6 @@ LOVABLE_CSS = """
         transform: translateY(-2px);
     }
 
-    /* Hero Card (Esquerda) */
     .hero-card {
         height: 100%;
         display: flex; flex-direction: column; 
@@ -135,45 +144,31 @@ LOVABLE_CSS = """
         background: linear-gradient(180deg, #ffffff 0%, #fff7f2 100%);
     }
     .hero-label {
-        font-size: 0.85rem; 
-        color: var(--primary);
-        text-transform: uppercase; 
-        letter-spacing: 0.1em; 
-        font-weight: 700; 
-        margin-bottom: 1rem;
+        font-size: 0.85rem; color: var(--primary);
+        text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700; margin-bottom: 1rem;
         display: flex; align-items: center; gap: 8px; justify-content: center;
     }
     .hero-value {
-        font-size: 3rem; 
-        font-weight: 800; 
-        color: var(--text-main); 
-        line-height: 1.1;
-        letter-spacing: -0.03em;
-        margin-bottom: 1.5rem;
+        font-size: 3rem; font-weight: 800; color: var(--text-main); line-height: 1.1;
+        letter-spacing: -0.03em; margin-bottom: 1.5rem;
     }
     .hero-avatar {
-        width: 90px; height: 90px;
-        border-radius: 50%;
-        background: var(--primary);
-        color: white;
+        width: 90px; height: 90px; border-radius: 50%;
+        background: var(--primary); color: white;
         font-size: 2.5rem; font-weight: 700;
         display: flex; align-items: center; justify-content: center;
         box-shadow: 0 8px 20px rgba(229, 83, 15, 0.3);
-        border: 4px solid #fff;
-        margin-bottom: 1rem;
+        border: 4px solid #fff; margin-bottom: 1rem;
     }
 
-    /* Ranking Podium */
     .podium-container {
         display: flex; align-items: flex-end; justify-content: center; gap: 12px;
         height: 160px; margin-top: 1rem;
     }
     .podium-bar {
-        flex: 1;
-        border-radius: 8px 8px 0 0;
+        flex: 1; border-radius: 8px 8px 0 0;
         display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
-        padding-bottom: 0.5rem;
-        border: 1px solid var(--border); border-bottom: none;
+        padding-bottom: 0.5rem; border: 1px solid var(--border); border-bottom: none;
         position: relative;
     }
     .podium-1 {
@@ -183,16 +178,11 @@ LOVABLE_CSS = """
         box-shadow: 0 -4px 20px -10px var(--primary-glow);
     }
     .podium-2, .podium-3 { background: #f9fafb; }
-    .podium-2 { height: 70%; } 
-    .podium-3 { height: 50%; }
+    .podium-2 { height: 70%; } .podium-3 { height: 50%; }
 
-    /* Histórico Clean */
     .history-container {
         display: flex; flex-direction: column; gap: 8px;
-        margin-top: 10px;
-        max-height: 300px;
-        overflow-y: auto;
-        padding-right: 5px;
+        margin-top: 10px; max-height: 300px; overflow-y: auto; padding-right: 5px;
     }
     .history-container::-webkit-scrollbar { width: 4px; }
     .history-container::-webkit-scrollbar-track { background: transparent; }
@@ -200,16 +190,11 @@ LOVABLE_CSS = """
 
     .history-row {
         display: flex; justify-content: space-between; align-items: center;
-        background: #ffffff;
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        padding: 10px 14px;
-        transition: all 0.2s;
+        background: #ffffff; border: 1px solid var(--border);
+        border-radius: 8px; padding: 10px 14px; transition: all 0.2s;
     }
     .history-row:hover {
-        background: #fdfdfd;
-        border-color: var(--primary);
-        transform: translateX(2px);
+        background: #fdfdfd; border-color: var(--primary); transform: translateX(2px);
     }
     .h-time { font-family: monospace; color: var(--text-muted); font-size: 0.8rem; }
     .h-name { font-weight: 600; color: var(--text-main); font-size: 0.9rem; margin-left: 10px; flex-grow: 1; }
@@ -221,20 +206,18 @@ LOVABLE_CSS = """
     .h-badge-blue { color: var(--info-text); background: var(--info-bg); border: 1px solid var(--info-border); }
     
     .icon-sm svg { width: 16px; height: 16px; }
-    
     .badge-pill {
         display: inline-flex; align-items: center; gap: 6px;
         padding: 6px 14px; border-radius: 20px;
         font-size: 0.8rem; font-weight: 600;
-        background: #fff;
-        border: 1px solid var(--border);
+        background: #fff; border: 1px solid var(--border);
         box-shadow: 0 1px 2px rgba(0,0,0,0.05);
     }
 </style>
 """
 st.markdown(clean_html(LOVABLE_CSS), unsafe_allow_html=True)
 
-# --- HEADER (LOGOTIPO E STATUS) ---
+# --- HEADER ---
 if logo_base64:
     img_tag = f'<img src="data:image/png;base64,{logo_base64}" class="logo-img">'
 else:
@@ -253,13 +236,20 @@ st.markdown(clean_html(f"""
     </div>
 """), unsafe_allow_html=True)
 
-# --- BUSCA DE DADOS ---
+# --- DADOS ---
 def get_data():
     try:
+        # Busca dados do Supabase
         response = supabase.table("vendas_dashboard").select("*").order("data_conclusao", desc=True).limit(50).execute()
         df = pd.DataFrame(response.data)
+        
+        # --- BLINDAGEM DE DADOS ---
+        # Garante que nenhum HTML vindo do banco seja executado
+        df = sanitize_df(df)
+        
         return df
     except Exception as e:
+        # Em caso de erro, não printar o erro na tela (st.write(e)), apenas retornar vazio
         return pd.DataFrame()
 
 df = get_data()
@@ -270,7 +260,7 @@ if df.empty:
 else:
     col_left, col_right = st.columns([3, 2], gap="large")
 
-    # --- ESQUERDA: CARD PRINCIPAL (HERO) ---
+    # --- ESQUERDA: HERO CARD ---
     with col_left:
         latest = df.iloc[0]
         id_esteira = str(latest.get('id_esteira', '0'))
@@ -279,9 +269,12 @@ else:
         badge_text = "CAPTAÇÃO" if is_captacao else "AGENDAMENTO"
         badge_style = "color:var(--success-text); background:var(--success-bg); border-color:var(--success-border);" if is_captacao else "color:var(--info-text); background:var(--info-bg); border-color:var(--info-border);"
         
+        # Tratamento seguro das variáveis
         nome_resp = latest.get('responsavel', 'Indefinido')
         iniciais = "".join([n[0] for n in nome_resp.split()[:2]]).upper()
-        nome_cartao = latest.get('nome_cartao', '---')
+        # Aqui é onde o erro costuma acontecer: nome_cartao contendo tags. 
+        # Como já rodamos sanitize_df, está limpo. O escape é garantia extra.
+        nome_cartao = escape(latest.get('nome_cartao', '---'))
         tempo = pd.to_datetime(latest['data_conclusao']).strftime("%H:%M")
 
         st.markdown(clean_html(f"""
@@ -321,7 +314,6 @@ else:
         top3 = ranking_df.head(3).to_dict('records')
         while len(top3) < 3: top3.append({'nome': '-', 'count': 0})
 
-        # RANKING
         st.markdown(clean_html(f"""
             <div class="lovable-card" style="margin-bottom: 1.5rem; padding-bottom: 0;">
                 <div style="text-align:center; font-size:0.8rem; color:var(--text-muted); font-weight:700; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:10px;">
@@ -348,14 +340,12 @@ else:
             </div>
         """), unsafe_allow_html=True)
 
-        # CABEÇALHO HISTÓRICO
         st.markdown(clean_html(f"""
             <div style="margin-bottom:10px; display:flex; align-items:center; gap:8px; color:var(--text-muted); font-size:0.8rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em;">
                 <span class="icon-sm">{ICONS['activity']}</span> Histórico Recente
             </div>
         """), unsafe_allow_html=True)
         
-        # LISTA HISTÓRICO (BUILDER)
         html_history = '<div class="history-container">'
         last_records = df.head(6).to_dict('records')
         
@@ -369,7 +359,6 @@ else:
             else:
                 badge_html = '<span class="h-badge h-badge-blue">AGEND.</span>'
             
-            # Usando clean_html em cada item para garantir
             html_history += clean_html(f"""
                 <div class="history-row">
                     <div class="h-time">{r_hora}</div>
