@@ -1,4 +1,4 @@
-# Importação das bibliotecas necessárias (foco no streamlit)
+# Importação das bibliotecas necessárias
 import streamlit as st
 import pandas as pd
 from supabase import create_client
@@ -36,148 +36,259 @@ def get_base64_of_bin_file(bin_file):
         return None
 
 # Adição da logo na barra superior
-logo_file = "PPM(LOGOBRANCA).png" 
+logo_file = "PPM(LOGOBRANCA).png"
 logo_base64 = get_base64_of_bin_file(logo_file)
 
 # Adição de data e hora
 data_hoje = datetime.now().strftime("%d/%m/%Y")
 hora_hoje = datetime.now().strftime("%H:%M")
 
-# Estilização da página utilizando CSS. Apto a melhorias futuras
-st.markdown(f"""
+# --- Design System Lovable / Modern SaaS (Tailwind-inspired) ---
+# Cores: slate-50 fundo, cards brancos, rounded-2xl, shadow-sm, laranja em destaque
+LOVABLE_CSS = """
     <style>
-        /* Fundo Laranja Vivo */
-        .stApp {{
-            background-color: #FF5722;
-        }}
+        /* Import tipografia moderna */
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap');
 
-        .block-container {{
-            padding-top: 2rem;
-            padding-bottom: 2rem;
-        }}
-        
-        header {{ visibility: hidden; }}
+        /* Reset / base */
+        html, body, [class*="css"] {
+            font-family: 'DM Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+        }
 
-        /* Barra superior */
-        .top-bar {{
+        /* Fundo slate-50 */
+        .stApp {
+            background-color: #f8fafc !important;
+            background: #f8fafc !important;
+        }
+
+        /* Remover padding excessivo - layout clean */
+        .block-container {
+            padding-top: 1rem !important;
+            padding-bottom: 1.5rem !important;
+            padding-left: 1.5rem !important;
+            padding-right: 1.5rem !important;
+            max-width: 100% !important;
+        }
+
+        header { visibility: hidden; }
+        #MainMenu { visibility: hidden; }
+        footer { visibility: hidden; }
+
+        /* Barra superior - clean, sombra suave */
+        .lovable-topbar {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
-            height: 100px;
-            background-color: #000000;
+            height: 64px;
+            background: #ffffff;
             z-index: 9999;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 40px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-        }}
-        
-        .top-bar-left img {{
-            height: 80px;
-            object-fit: contain;
-        }}
-        
-        .top-bar-right {{
+            padding: 0 1.5rem;
+            box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05);
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .lovable-topbar img { height: 40px; object-fit: contain; }
+        .lovable-topbar-right {
             text-align: right;
+            color: #1e293b;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        .lovable-topbar-title { font-size: 1.125rem; font-weight: 600; margin: 0; color: #0f172a; }
+        .lovable-topbar-meta { font-size: 0.8rem; color: #64748b; margin-top: 2px; }
+        .lovable-spacer { height: 64px; }
+
+        /* Cards Lovable: white, rounded-2xl, shadow-sm */
+        .lovable-card {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            border: 1px solid #f1f5f9;
+            margin-bottom: 1rem;
+            transition: box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+        .lovable-card:hover {
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+            border-color: #e2e8f0;
+        }
+
+        /* Bento grid container */
+        .lovable-bento {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr;
+            gap: 1rem;
+            width: 100%;
+        }
+        @media (max-width: 900px) {
+            .lovable-bento { grid-template-columns: 1fr; }
+        }
+
+        /* Labels / títulos de seção */
+        .lovable-label {
+            font-size: 0.75rem;
+            color: #64748b;
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+        .lovable-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #0f172a;
+            line-height: 1.25;
+            letter-spacing: -0.02em;
+            margin: 0.25rem 0 0.75rem 0;
+        }
+
+        /* Badge - laranja com moderação */
+        .lovable-badge {
+            display: inline-block;
+            padding: 0.375rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+        .lovable-badge-orange {
+            background: #fff7ed;
+            color: #c2410c;
+            border: 1px solid #fed7aa;
+        }
+        .lovable-badge-green {
+            background: #f0fdf4;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+        .lovable-badge-blue {
+            background: #eff6ff;
+            color: #1d4ed8;
+            border: 1px solid #bfdbfe;
+        }
+
+        /* Avatar responsável */
+        .lovable-avatar-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem 0;
+        }
+        .lovable-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
             color: white;
-            font-family: 'Segoe UI', sans-serif;
-        }}
-        
-        .project-title {{ font-size: 1.8rem; font-weight: 600; margin: 0; line-height: 1.2; }}
-        .project-date {{ font-size: 1.1rem; opacity: 0.8; margin: 0; }}
-        .spacer {{ height: 100px; }}
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+            box-shadow: 0 1px 3px 0 rgb(249 115 22 / 0.25);
+        }
+        .lovable-avatar-name { font-size: 1.25rem; font-weight: 600; color: #1e293b; }
 
-        /* Componentes em branco da tela */
-        .css-card {{
-            background-color: white;
-            border-radius: 15px;
-            padding: 25px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-            margin-bottom: 20px;
-            color: #333;
-        }}
+        /* Pódio - bento style */
+        .lovable-podium {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 0.75rem;
+            height: 220px;
+            margin-top: 1rem;
+        }
+        .lovable-podium-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            border-radius: 16px 16px 0 0;
+            width: 32%;
+            padding: 1rem 0.75rem 0.75rem;
+            background: #ffffff;
+            border: 1px solid #f1f5f9;
+            box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        }
+        .lovable-podium-step-1 {
+            height: 100%;
+            order: 2;
+            background: #fff7ed;
+            border-color: #fed7aa;
+            box-shadow: 0 2px 4px -1px rgb(249 115 22 / 0.1);
+        }
+        .lovable-podium-step-2 { height: 70%; order: 1; }
+        .lovable-podium-step-3 { height: 55%; order: 3; }
+        .lovable-podium-name { font-size: 0.9rem; font-weight: 600; color: #475569; margin-bottom: 0.25rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%; text-align: center; }
+        .lovable-podium-count { font-size: 1.5rem; font-weight: 800; color: #f97316; line-height: 1; }
+        .lovable-podium-rank { font-size: 0.7rem; color: #94a3b8; font-weight: 500; margin-top: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em; }
 
-        /* Textos */
-        h1, h2, h3, p, div {{ font-family: 'Segoe UI', sans-serif; }}
-        .highlight-title {{ font-size: 1.1rem; color: #666; text-transform: uppercase; font-weight: bold; margin-bottom: 10px; }}
-        .highlight-card-name {{ font-size: 2.2rem; font-weight: 800; color: #FF5722; line-height: 1.2; }}
-        .highlight-tag {{ display: inline-block; padding: 5px 15px; border-radius: 20px; color: white; font-weight: bold; margin-top: 10px; font-size: 1rem; }}
-        
-        /* Avatar (sem fotos no momento) */
-        .avatar-box {{ display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: 20px; }}
-        .avatar-circle-big {{ width: 100px; height: 100px; border-radius: 50%; background-color: #333; color: white; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: bold; margin-bottom: 15px; }}
+        /* Header da tabela - mesmo estilo dos cards, colado ao dataframe */
+        .lovable-table-header {
+            background: #ffffff;
+            border-radius: 16px 16px 0 0;
+            padding: 1rem 1.5rem;
+            border: 1px solid #f1f5f9;
+            border-bottom: none;
+            box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            margin-bottom: 0;
+        }
 
-        /* Podium */
-        .podium-container {{ display: flex; align-items: flex-end; justify-content: center; height: 220px; gap: 15px; }}
-        .podium-step {{ display: flex; flex-direction: column; align-items: center; justify-content: flex-end; border-radius: 8px 8px 0 0; color: white; font-weight: bold; text-align: center; width: 30%; padding-bottom: 10px; }}
-        .step-1 {{ height: 90%; background: #fbbf24; order: 2; font-size: 2rem; box-shadow: 0 0 10px rgba(0,0,0,0.2); position: relative; z-index: 2; }}
-        .step-2 {{ height: 65%; background: #9ca3af; order: 1; font-size: 1.5rem; opacity: 0.9; }}
-        .step-3 {{ height: 45%; background: #b45309; order: 3; font-size: 1.2rem; opacity: 0.9; }}
+        /* Tabela Streamlit - override para Lovable (bento card) */
+        [data-testid="stDataFrame"] {
+            background: #ffffff !important;
+            border-radius: 0 0 16px 16px !important;
+            padding: 0 1.5rem 1.5rem !important;
+            border: 1px solid #f1f5f9 !important;
+            border-top: none !important;
+            box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05) !important;
+            margin-top: 0 !important;
+        }
+        [data-testid="stDataFrame"] div[data-testid="stVerticalBlock"] { background: transparent !important; }
+        [data-testid="glide-cell"] {
+            background: transparent !important;
+            color: #475569 !important;
+            border-color: #f1f5f9 !important;
+            padding: 0.75rem 1rem !important;
+        }
+        [data-testid="glide-cell"] > div { color: #475569 !important; font-weight: 400; }
+        [data-testid="glide-header-cell"] {
+            background: #f8fafc !important;
+            color: #1e293b !important;
+            font-weight: 600 !important;
+            border-bottom: 1px solid #e2e8f0 !important;
+            padding: 0.75rem 1rem !important;
+            font-size: 0.8rem;
+        }
+        [data-testid="stDataFrame"] table { border-collapse: separate; border-spacing: 0; }
+        [data-testid="glide-row"]:hover { background-color: #fff7ed !important; }
 
-        /*  */
-        
-        /* 1. Header do Cartão da Tabela */
-        .table-header-card {{
-            background-color: white;
-            border-radius: 15px 15px 0 0;
-            padding: 20px 25px 10px 25px;
-            margin-bottom: -15px; /* Cola na tabela abaixo */
-            position: relative;
-            z-index: 1;
-        }}
-
-        /* 2. Container da Tabela */
-        [data-testid="stDataFrame"] {{
-            width: 100% !important;
-            background-color: white !important;
-            border-radius: 0 0 15px 15px !important;
-            padding: 0 25px 25px 25px !important;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-        }}
-
-        /* 3. Forçar Cores Claras na Tabela (Fundo Branco, Texto Cinza) */
-        [data-testid="stDataFrame"] div[data-testid="stVerticalBlock"] {{
-            background-color: white !important;
-        }}
-        
-        [data-testid="glide-cell"] {{
-            background-color: white !important;
-            color: #8F8F8F !important;
-            border-color: #eee !important;
-        }}
-        
-        /* Texto dentro das células */
-        [data-testid="glide-cell"] > div {{
-            color: #8F8F8F !important;
-        }}
-
-        /* Cabeçalho das Colunas */
-        [data-testid="glide-header-cell"] {{
-            background-color: #f9f9f9 !important;
-            color: #333 !important;
-            font-weight: bold !important;
-            border-bottom: 1px solid #ddd !important;
-        }}
-
+        /* Esconder blocos vazios do Streamlit entre nossos cards */
+        .stColumn > div:empty { display: none !important; }
     </style>
-""", unsafe_allow_html=True)
+"""
+
+st.markdown(LOVABLE_CSS, unsafe_allow_html=True)
 
 if logo_base64:
     img_tag = f'<img src="data:image/png;base64,{logo_base64}" alt="Logo PPM">'
 else:
-    img_tag = '<span style="color:white;">LOGO NÃO ENCONTRADA</span>'
+    img_tag = '<span style="color:#64748b;font-weight:600;">PPM</span>'
 
 st.markdown(f"""
-    <div class="top-bar">
-        <div class="top-bar-left">{img_tag}</div>
-        <div class="top-bar-right">
-            <div class="project-title">Dashboard - Agendamento & Captação</div>
-            <div class="project-date">{hora_hoje} | {data_hoje}</div>
+    <div class="lovable-topbar">
+        <div class="lovable-topbar-left">{img_tag}</div>
+        <div class="lovable-topbar-right">
+            <div class="lovable-topbar-title">Dashboard — Agendamento & Captação</div>
+            <div class="lovable-topbar-meta">{hora_hoje} · {data_hoje}</div>
         </div>
     </div>
-    <div class="spacer"></div>
+    <div class="lovable-spacer"></div>
 """, unsafe_allow_html=True)
 
 
@@ -188,6 +299,7 @@ def get_data():
         return df
     except Exception as e:
         return pd.DataFrame()
+
 
 df = get_data()
 
@@ -200,69 +312,68 @@ else:
         latest = df.iloc[0]
         id_esteira = str(latest.get('id_esteira', '0'))
         is_captacao = id_esteira == '10'
-        texto_esteira = "CAPTAÇÃO" if is_captacao else "AGENDAMENTO"
-        cor_esteira = "#4ade80" if is_captacao else "#60a5fa"
-        
+        texto_esteira = "Captação" if is_captacao else "Agendamento"
+        badge_cls = "lovable-badge-green" if is_captacao else "lovable-badge-blue"
+
         nome_resp = latest.get('responsavel', 'Indefinido')
         iniciais = "".join([n[0] for n in nome_resp.split()[:2]]).upper()
 
         st.markdown(f"""
-        <div class="css-card">
-            <div class="highlight-title">Última Conversão Realizada</div>
-            <div class="highlight-card-name">{latest.get('nome_cartao', '---')}</div>
-            <div class="highlight-tag" style="background-color: {cor_esteira};">{texto_esteira}</div>
+        <div class="lovable-card">
+            <div class="lovable-label">Última conversão realizada</div>
+            <div class="lovable-title">{latest.get('nome_cartao', '---')}</div>
+            <span class="lovable-badge {badge_cls}">{texto_esteira}</span>
         </div>
-        
-        <div class="css-card" style="min-height: 250px; display: flex; flex-direction: column; justify-content: center;">
-            <div class="highlight-title" style="text-align:center;">RESPONSÁVEL PELA CONVERSÃO</div>
-            <div class="avatar-box">
-                <div class="avatar-circle-big">{iniciais}</div>
-                <div style="font-size: 1.8rem; font-weight: bold; color: #333;">{nome_resp}</div>
+
+        <div class="lovable-card">
+            <div class="lovable-label" style="text-align:center;">Responsável pela conversão</div>
+            <div class="lovable-avatar-wrap">
+                <div class="lovable-avatar">{iniciais}</div>
+                <div class="lovable-avatar-name">{nome_resp}</div>
             </div>
         </div>
         """, unsafe_allow_html=True)
 
     with col_right:
-        # Ranking
         ranking_df = df['responsavel'].value_counts().reset_index()
         ranking_df.columns = ['nome', 'count']
         top3 = ranking_df.head(3).to_dict('records')
-        while len(top3) < 3: top3.append({'nome': '-', 'count': 0})
+        while len(top3) < 3:
+            top3.append({'nome': '-', 'count': 0})
 
         st.markdown(f"""
-        <div class="css-card">
-            <div class="highlight-title" style="text-align: center; border-bottom: 1px solid #eee; padding-bottom: 10px;">🏆 Ranking de Conversões</div>
-            <div class="podium-container">
-                <div class="podium-step step-2">
-                    <div style="margin-bottom:5px; font-size: 0.9rem; color: #333;">{top3[1]['nome'].split()[0]}</div>
-                    <div>{top3[1]['count']}</div>
-                    <div style="font-size: 0.8rem; opacity: 0.8">2º</div>
+        <div class="lovable-card">
+            <div class="lovable-label" style="text-align:center; border-bottom:1px solid #f1f5f9; padding-bottom:0.75rem; margin-bottom:1rem;">🏆 Ranking de conversões</div>
+            <div class="lovable-podium">
+                <div class="lovable-podium-step lovable-podium-step-2">
+                    <div class="lovable-podium-name">{top3[1]['nome'].split()[0] if top3[1]['nome'] != '-' else '-'}</div>
+                    <div class="lovable-podium-count">{top3[1]['count']}</div>
+                    <div class="lovable-podium-rank">2º</div>
                 </div>
-                <div class="podium-step step-1">
-                    <div style="margin-bottom:5px; font-size: 1rem; color: #333; font-weight:bold;">{top3[0]['nome'].split()[0]}</div>
-                    <div>{top3[0]['count']}</div>
-                    <div style="font-size: 0.8rem; opacity: 0.8">1º</div>
+                <div class="lovable-podium-step lovable-podium-step-1">
+                    <div class="lovable-podium-name">{top3[0]['nome'].split()[0] if top3[0]['nome'] != '-' else '-'}</div>
+                    <div class="lovable-podium-count">{top3[0]['count']}</div>
+                    <div class="lovable-podium-rank">1º</div>
                 </div>
-                <div class="podium-step step-3">
-                    <div style="margin-bottom:5px; font-size: 0.9rem; color: #333;">{top3[2]['nome'].split()[0]}</div>
-                    <div>{top3[2]['count']}</div>
-                    <div style="font-size: 0.8rem; opacity: 0.8">3º</div>
+                <div class="lovable-podium-step lovable-podium-step-3">
+                    <div class="lovable-podium-name">{top3[2]['nome'].split()[0] if top3[2]['nome'] != '-' else '-'}</div>
+                    <div class="lovable-podium-count">{top3[2]['count']}</div>
+                    <div class="lovable-podium-rank">3º</div>
                 </div>
             </div>
         </div>
         """, unsafe_allow_html=True)
 
-        # Lista detalhada de dados
         st.markdown("""
-            <div class="table-header-card">
-                <div class="highlight-title" style="margin-bottom:0;">📋 Lista Detalhada (Histórico)</div>
+            <div class="lovable-table-header">
+                <div class="lovable-label" style="margin-bottom:0;">📋 Lista detalhada (histórico)</div>
             </div>
         """, unsafe_allow_html=True)
 
         view_df = df[['responsavel', 'nome_cartao', 'id_esteira', 'data_conclusao']].copy()
         view_df['Esteira'] = view_df['id_esteira'].apply(lambda x: "Captação" if str(x) == '10' else "Agendamento")
         view_df['Data/Hora'] = pd.to_datetime(view_df['data_conclusao']).dt.strftime('%d/%m %H:%M')
-        
+
         st.dataframe(
             view_df[['responsavel', 'nome_cartao', 'Esteira', 'Data/Hora']],
             column_config={
@@ -279,3 +390,4 @@ else:
 # Auto-refresh
 time.sleep(5)
 st.rerun()
+
