@@ -6,8 +6,8 @@ import time
 import base64
 from datetime import datetime
 import textwrap
-from html import escape # <--- Blindagem contra injeção de HTML no texto
-import re # Para remover tags do banco se existirem
+from html import escape 
+import re 
 
 # --- FUNÇÕES DE LIMPEZA E BLINDAGEM ---
 
@@ -19,7 +19,7 @@ def sanitize_text(text):
     """Remove tags HTML de uma string e faz escape de caracteres especiais"""
     if not isinstance(text, str):
         return str(text)
-    # 1. Remove tags HTML que possam vir do banco (ex: <div>Agendamento</div>)
+    # 1. Remove tags HTML que possam vir do banco
     clean = re.sub('<[^<]+?>', '', text)
     # 2. Escapa caracteres para evitar quebra do HTML do layout
     return escape(clean)
@@ -249,7 +249,6 @@ def get_data():
         
         return df
     except Exception as e:
-        # Em caso de erro, não printar o erro na tela (st.write(e)), apenas retornar vazio
         return pd.DataFrame()
 
 df = get_data()
@@ -272,40 +271,37 @@ else:
         # Tratamento seguro das variáveis
         nome_resp = latest.get('responsavel', 'Indefinido')
         iniciais = "".join([n[0] for n in nome_resp.split()[:2]]).upper()
-        # Aqui é onde o erro costuma acontecer: nome_cartao contendo tags. 
-        # Como já rodamos sanitize_df, está limpo. O escape é garantia extra.
-        nome_cartao = escape(latest.get('nome_cartao', '---'))
+        
+        # Como o sanitize_df já rodou, NÃO devemos usar escape() novamente
+        nome_cartao = latest.get('nome_cartao', '---')
         tempo = pd.to_datetime(latest['data_conclusao']).strftime("%H:%M")
 
-        st.markdown(clean_html(f"""
-            <div class="lovable-card hero-card">
-                <div class="hero-label">
-                    <span class="icon-sm">{ICONS['flame']}</span> ÚLTIMA CONVERSÃO
+        # HTML compactado para evitar erro de interpretação de código do Markdown
+        html_hero = f"""
+        <div class="lovable-card hero-card">
+            <div class="hero-label">
+                <span class="icon-sm">{ICONS['flame']}</span> ÚLTIMA CONVERSÃO
+            </div>
+            <div class="hero-value">
+                {nome_cartao}
+            </div>
+            <div class="badge-pill" style="{badge_style} margin-bottom: 2rem;">
+                {badge_text} REALIZADO
+            </div>
+            <div style="width: 50%; height: 1px; background: var(--border); margin-bottom: 2rem;"></div>
+            <div style="display:flex; flex-direction:column; align-items:center;">
+                <div class="hero-avatar">{iniciais}</div>
+                <div style="font-size:1.2rem; font-weight:700; color:var(--text-main); margin-bottom:4px;">
+                    {nome_resp}
                 </div>
-
-                <div class="hero-value">
-                    {nome_cartao}
-                </div>
-
-                <div class="badge-pill" style="{badge_style} margin-bottom: 2rem;">
-                    {badge_text} REALIZADO
-                </div>
-
-                <div style="width: 50%; height: 1px; background: var(--border); margin-bottom: 2rem;"></div>
-
-                <div style="display:flex; flex-direction:column; align-items:center;">
-                    <div class="hero-avatar">
-                        {iniciais}
-                    </div>
-                    <div style="font-size:1.2rem; font-weight:700; color:var(--text-main); margin-bottom:4px;">
-                        {nome_resp}
-                    </div>
-                    <div style="font-size:0.9rem; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
-                        {ICONS['clock']} Hoje às {tempo}
-                    </div>
+                <div style="font-size:0.9rem; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+                    {ICONS['clock']} Hoje às {tempo}
                 </div>
             </div>
-        """), unsafe_allow_html=True)
+        </div>
+        """
+
+        st.markdown(clean_html(html_hero), unsafe_allow_html=True)
 
     # --- DIREITA: RANKING + HISTÓRICO ---
     with col_right:
